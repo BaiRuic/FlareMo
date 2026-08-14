@@ -12,8 +12,10 @@ import {
   getFlaremoUserById,
   type getMemoById,
   getMemoByIdForViewer,
+  getMemoStats,
   getMemosPersonalAccessToken,
   getPublicShareByToken,
+  getStoredSetting,
   hardDeleteMemo,
   listAttachments,
   listAttachmentsForMemosForViewer,
@@ -29,6 +31,7 @@ import {
   revokeAuthSessionByToken,
   revokeMemoShare,
   updateMemo,
+  upsertStoredSetting,
 } from "@flaremo/domain";
 import {
   currentAttachmentToDto,
@@ -1072,6 +1075,86 @@ memosCurrentApi.get("/user/user/:user", async (c, next) => {
   }
 });
 
+memosCurrentApi.get("/users/users/:user/settings/:setting", async (c) => {
+  try {
+    return await handleGetUserSetting(c, c.req.param("user"), c.req.param("setting"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.patch("/users/users/:user/settings/:setting", async (c) => {
+  try {
+    return await handlePatchUserSetting(c, c.req.param("user"), c.req.param("setting"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/users/:user/settings", async (c) => {
+  try {
+    return await handleListUserSettings(c, c.req.param("user"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/:user/settings/:setting", async (c) => {
+  try {
+    return await handleGetUserSetting(c, c.req.param("user"), c.req.param("setting"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.patch("/users/:user/settings/:setting", async (c) => {
+  try {
+    return await handlePatchUserSetting(c, c.req.param("user"), c.req.param("setting"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/:user/settings", async (c) => {
+  try {
+    return await handleListUserSettings(c, c.req.param("user"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/users/:user:getStats", async (c) => {
+  try {
+    return await handleGetUserStats(c, c.req.param("user"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/users/:user/stats", async (c) => {
+  try {
+    return await handleGetUserStats(c, c.req.param("user"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/:user:getStats", async (c) => {
+  try {
+    return await handleGetUserStats(c, c.req.param("user"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/users/:user/stats", async (c) => {
+  try {
+    return await handleGetUserStats(c, c.req.param("user"));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
 memosCurrentApi.get("/users/:user", async (c, next) => {
   if (isLegacyWireRequest(c)) return next();
   try {
@@ -1093,6 +1176,106 @@ memosCurrentApi.get("/user/:user", async (c, next) => {
     return currentJsonError(c, error);
   }
 });
+
+async function handleGetUserSetting(
+  c: Parameters<typeof getRequestContext>[0],
+  userParam?: string,
+  settingParam?: string,
+) {
+  const context = await getRequestContext(c);
+  assertCurrentUserPath(userParam ?? "owner", context.user.id);
+  const key = settingParam ?? "GENERAL";
+  const stored = await getStoredSetting(
+    context.db,
+    context.user,
+    `memos.user.${key}`,
+  );
+  const general =
+    stored?.value && typeof stored.value === "object"
+      ? stored.value
+      : {
+          locale: "zh-Hans",
+          memoVisibility: "PRIVATE",
+          theme: "",
+        };
+  return c.json({
+    name: `users/${context.user.id.replace(/^users\//, "")}/settings/${key}`,
+    generalSetting: general,
+  });
+}
+
+async function handlePatchUserSetting(
+  c: Parameters<typeof getRequestContext>[0],
+  userParam?: string,
+  settingParam?: string,
+) {
+  const context = await getRequestContext(c);
+  assertCurrentUserPath(userParam ?? "owner", context.user.id);
+  const key = settingParam ?? "GENERAL";
+  const body = (await c.req.json()) as Record<string, unknown>;
+  const general = (body.generalSetting ?? body) as Record<string, unknown>;
+  await upsertStoredSetting(
+    context.db,
+    context.user,
+    `memos.user.${key}`,
+    general,
+  );
+  return c.json({
+    name: `users/${context.user.id.replace(/^users\//, "")}/settings/${key}`,
+    generalSetting: general,
+  });
+}
+
+async function handleListUserSettings(
+  c: Parameters<typeof getRequestContext>[0],
+  userParam?: string,
+) {
+  const context = await getRequestContext(c);
+  assertCurrentUserPath(userParam ?? "owner", context.user.id);
+  const stored = await getStoredSetting(
+    context.db,
+    context.user,
+    "memos.user.GENERAL",
+  );
+  const general =
+    stored?.value && typeof stored.value === "object"
+      ? stored.value
+      : {
+          locale: "zh-Hans",
+          memoVisibility: "PRIVATE",
+          theme: "",
+        };
+  return c.json({
+    settings: [
+      {
+        name: `users/${context.user.id.replace(/^users\//, "")}/settings/GENERAL`,
+        generalSetting: general,
+      },
+    ],
+  });
+}
+
+async function handleGetUserStats(
+  c: Parameters<typeof getRequestContext>[0],
+  userParam?: string,
+) {
+  const context = await getRequestContext(c);
+  assertCurrentUserPath(userParam ?? "owner", context.user.id);
+  const stats = await getMemoStats(context.db, context.user, {
+    time_zone: "UTC",
+  });
+  return c.json({
+    name: context.user.id,
+    memoTypeStats: { linkCount: 0, codeCount: 0, todoCount: 0, undoCount: 0 },
+    tagCount: Object.fromEntries(
+      stats.tags.map((tag) => [tag.name, tag.count]),
+    ),
+    totalMemoCount: stats.counts.total,
+    pinnedMemos: [],
+    memoCreatedTimestamps: [],
+    memoUpdatedTimestamps: [],
+  });
+}
 
 async function currentMemoWithDetails(
   context: Awaited<ReturnType<typeof getOptionalRequestContext>>,
@@ -1398,9 +1581,10 @@ function normalizeAttachmentName(value: string) {
 
 function assertCurrentUserPath(value: string, currentUserId: string) {
   const expected = currentUserId.replace(/^users\//, "");
-  const normalized = value.startsWith("users/")
-    ? value.replace(/^users\//, "")
-    : value;
+  const normalized = value
+    .replace(/^(users\/)+/, "")
+    .replace(/^(user\/)+/, "")
+    .replace(/(:getStats|\/stats)$/, "");
   if (normalized !== expected && normalized !== "me" && value !== "me") {
     throw new ForbiddenCurrentError("Only the current user is available");
   }
