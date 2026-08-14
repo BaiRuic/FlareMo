@@ -160,19 +160,19 @@ export function isLegacyWireRequest(c: {
   );
 }
 
-memosCurrentApi.get("/ping", (c) => c.json({ version: "0.22.5", mode: "prod" }));
-memosCurrentApi.get("/status", (c) => c.json({ version: "0.22.5", mode: "prod" }));
+memosCurrentApi.get("/ping", (c) => c.json({ version: "0.29.0", mode: "prod" }));
+memosCurrentApi.get("/status", (c) => c.json({ version: "0.29.0", mode: "prod" }));
 memosCurrentApi.get("/system/status", (c) =>
   c.json({
-    version: "0.22.5",
+    version: "0.29.0",
     mode: "prod",
-    profile: { version: "0.22.5", mode: "prod" },
+    profile: { version: "0.29.0", mode: "prod" },
   }),
 );
 memosCurrentApi.get("/workspace/profile", (c) =>
   c.json({
     owner: "users/owner",
-    version: "0.22.5",
+    version: "0.29.0",
     mode: "prod",
     instanceUrl: "",
     customizedProfile: {
@@ -214,7 +214,7 @@ memosCurrentApi.get("/workspace/customized-profile", (c) =>
 memosCurrentApi.get("/instance/profile", (c) =>
   c.json({
     owner: "users/owner",
-    version: "0.22.5",
+    version: "0.29.0",
     mode: "prod",
   }),
 );
@@ -231,7 +231,7 @@ memosCurrentApi.get("/instance/system/info", (c) =>
   c.json({
     profile: {
       owner: "users/owner",
-      version: "0.22.5",
+      version: "0.29.0",
       mode: "prod",
     },
   }),

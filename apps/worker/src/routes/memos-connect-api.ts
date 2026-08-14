@@ -1085,7 +1085,7 @@ async function connectInstanceMethod(
         c,
         {
           owner: "users/owner",
-          version: "0.22.5",
+          version: "0.29.0",
           mode: "prod",
           demo: false,
           instanceUrl: c.env.FLAREMO_PUBLIC_URL ?? new URL(c.req.url).origin,
