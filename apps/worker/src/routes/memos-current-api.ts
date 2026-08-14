@@ -193,6 +193,40 @@ memosCurrentApi.get("/workspace/setting", (c) =>
     },
   }),
 );
+memosCurrentApi.get("/workspace/settings", (c) =>
+  c.json({
+    setting: {
+      generalSetting: {
+        disallowUserRegistration: true,
+      },
+    },
+  }),
+);
+memosCurrentApi.get("/workspace/customized-profile", (c) =>
+  c.json({
+    name: "FlareMo",
+    logoUrl: "",
+    description: "",
+    locale: "zh-Hans",
+    appearance: "system",
+  }),
+);
+memosCurrentApi.get("/instance/profile", (c) =>
+  c.json({
+    owner: "users/owner",
+    version: "0.22.5",
+    mode: "prod",
+  }),
+);
+memosCurrentApi.get("/instance/setting", (c) =>
+  c.json({
+    setting: {
+      generalSetting: {
+        disallowUserRegistration: true,
+      },
+    },
+  }),
+);
 memosCurrentApi.get("/instance/system/info", (c) =>
   c.json({
     profile: {
@@ -961,6 +995,28 @@ memosCurrentApi.delete(
     }
   },
 );
+
+memosCurrentApi.get("/users/users/:user", async (c, next) => {
+  if (isLegacyWireRequest(c)) return next();
+  try {
+    const context = await getRequestContext(c);
+    assertCurrentUserPath(c.req.param("user"), context.user.id);
+    return c.json(await currentUserForContext(context));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/user/user/:user", async (c, next) => {
+  if (isLegacyWireRequest(c)) return next();
+  try {
+    const context = await getRequestContext(c);
+    assertCurrentUserPath(c.req.param("user"), context.user.id);
+    return c.json(await currentUserForContext(context));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
 
 memosCurrentApi.get("/users/:user", async (c, next) => {
   if (isLegacyWireRequest(c)) return next();

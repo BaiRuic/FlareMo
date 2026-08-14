@@ -406,6 +406,8 @@ export async function markMemoAttachmentsDeleting(
   return rows;
 }
 
+const MEMO_ATTACHMENT_CHUNK_SIZE = 40;
+
 export async function listAttachmentsForMemos(
   db: FlareMoDb,
   user: UserRow,
@@ -415,18 +417,39 @@ export async function listAttachmentsForMemos(
     return [];
   }
 
-  return db
-    .select()
-    .from(attachments)
-    .where(
-      and(
-        eq(attachments.userId, user.id),
-        inArray(attachments.memoId, memoIds),
-        isNull(attachments.deletedAt),
-        eq(attachments.state, "ready"),
-      ),
-    )
-    .orderBy(desc(attachments.createdAt));
+  if (memoIds.length <= MEMO_ATTACHMENT_CHUNK_SIZE) {
+    return db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.userId, user.id),
+          inArray(attachments.memoId, memoIds),
+          isNull(attachments.deletedAt),
+          eq(attachments.state, "ready"),
+        ),
+      )
+      .orderBy(desc(attachments.createdAt));
+  }
+
+  const results: AttachmentRow[] = [];
+  for (let i = 0; i < memoIds.length; i += MEMO_ATTACHMENT_CHUNK_SIZE) {
+    const chunk = memoIds.slice(i, i + MEMO_ATTACHMENT_CHUNK_SIZE);
+    const rows = await db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.userId, user.id),
+          inArray(attachments.memoId, chunk),
+          isNull(attachments.deletedAt),
+          eq(attachments.state, "ready"),
+        ),
+      )
+      .orderBy(desc(attachments.createdAt));
+    results.push(...rows);
+  }
+  return results;
 }
 
 export async function listAttachmentsForMemosForViewer(
@@ -437,17 +460,37 @@ export async function listAttachmentsForMemosForViewer(
   if (user) return listAttachmentsForMemos(db, user, memoIds);
   if (memoIds.length === 0) return [];
 
-  return db
-    .select()
-    .from(attachments)
-    .where(
-      and(
-        inArray(attachments.memoId, memoIds),
-        isNull(attachments.deletedAt),
-        eq(attachments.state, "ready"),
-      ),
-    )
-    .orderBy(desc(attachments.createdAt));
+  if (memoIds.length <= MEMO_ATTACHMENT_CHUNK_SIZE) {
+    return db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          inArray(attachments.memoId, memoIds),
+          isNull(attachments.deletedAt),
+          eq(attachments.state, "ready"),
+        ),
+      )
+      .orderBy(desc(attachments.createdAt));
+  }
+
+  const results: AttachmentRow[] = [];
+  for (let i = 0; i < memoIds.length; i += MEMO_ATTACHMENT_CHUNK_SIZE) {
+    const chunk = memoIds.slice(i, i + MEMO_ATTACHMENT_CHUNK_SIZE);
+    const rows = await db
+      .select()
+      .from(attachments)
+      .where(
+        and(
+          inArray(attachments.memoId, chunk),
+          isNull(attachments.deletedAt),
+          eq(attachments.state, "ready"),
+        ),
+      )
+      .orderBy(desc(attachments.createdAt));
+    results.push(...rows);
+  }
+  return results;
 }
 
 export async function getAttachmentById(
