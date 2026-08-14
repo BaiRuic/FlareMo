@@ -22,6 +22,7 @@ import {
   listMemoShares,
   listMemosForViewer,
   listMemosPersonalAccessTokens,
+  listTagHierarchy,
   markAttachmentDeleting,
   moveMemoToTrash,
   replaceMemoRelations,
@@ -159,11 +160,94 @@ export function isLegacyWireRequest(c: {
   );
 }
 
+memosCurrentApi.get("/ping", (c) => c.json({ version: "0.22.5", mode: "prod" }));
+memosCurrentApi.get("/status", (c) => c.json({ version: "0.22.5", mode: "prod" }));
+memosCurrentApi.get("/system/status", (c) =>
+  c.json({
+    version: "0.22.5",
+    mode: "prod",
+    profile: { version: "0.22.5", mode: "prod" },
+  }),
+);
+memosCurrentApi.get("/workspace/profile", (c) =>
+  c.json({
+    owner: "users/owner",
+    version: "0.22.5",
+    mode: "prod",
+    instanceUrl: "",
+    customizedProfile: {
+      name: "FlareMo",
+      logoUrl: "",
+      description: "",
+      locale: "zh-Hans",
+      appearance: "system",
+    },
+  }),
+);
+memosCurrentApi.get("/workspace/setting", (c) =>
+  c.json({
+    setting: {
+      generalSetting: {
+        disallowUserRegistration: true,
+      },
+    },
+  }),
+);
+memosCurrentApi.get("/instance/system/info", (c) =>
+  c.json({
+    profile: {
+      owner: "users/owner",
+      version: "0.22.5",
+      mode: "prod",
+    },
+  }),
+);
+
 memosCurrentApi.get("/auth/me", async (c, next) => {
   if (isLegacyWireRequest(c)) return next();
   try {
     const context = await getRequestContext(c);
     return c.json({ user: await currentUserForContext(context) });
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/user/me", async (c) => {
+  try {
+    const context = await getRequestContext(c);
+    return c.json({ user: await currentUserForContext(context) });
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/user", async (c) => {
+  try {
+    const context = await getRequestContext(c);
+    return c.json({ users: [await currentUserForContext(context)] });
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/tag", async (c) => {
+  try {
+    const context = await getRequestContext(c);
+    const tags = await listTagHierarchy(context.db, context.user);
+    const names = tags.map((t) => t.name);
+    return c.json({ tag: names, tags: names });
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
+memosCurrentApi.get("/tags", async (c) => {
+  try {
+    const context = await getRequestContext(c);
+    const tags = await listTagHierarchy(context.db, context.user);
+    const names = tags.map((t) => t.name);
+    return c.json({ tags: names, tag: names });
   } catch (error) {
     return currentJsonError(c, error);
   }
@@ -880,6 +964,17 @@ memosCurrentApi.get("/users/:user", async (c, next) => {
   }
 });
 
+memosCurrentApi.get("/user/:user", async (c, next) => {
+  if (isLegacyWireRequest(c)) return next();
+  try {
+    const context = await getRequestContext(c);
+    assertCurrentUserPath(c.req.param("user"), context.user.id);
+    return c.json(await currentUserForContext(context));
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
 async function currentMemoWithDetails(
   context: Awaited<ReturnType<typeof getOptionalRequestContext>>,
   memo: Awaited<ReturnType<typeof getMemoById>>,
@@ -1187,8 +1282,9 @@ function assertCurrentUserPath(value: string, currentUserId: string) {
   const normalized = value.startsWith("users/")
     ? value.replace(/^users\//, "")
     : value;
-  if (normalized !== expected)
+  if (normalized !== expected && normalized !== "me" && value !== "me") {
     throw new ForbiddenCurrentError("Only the current user is available");
+  }
 }
 
 function currentPatToDto(

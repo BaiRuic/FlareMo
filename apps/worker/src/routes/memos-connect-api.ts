@@ -187,9 +187,34 @@ memosConnectApi.post("/:service/:method", async (c) => {
       return connectValue(c, { identityProviders: [] }, binaryTransport);
     }
     if (
-      service === "memos.api.v1.InstanceService" &&
+      service === "memos.api.v1.AuthService" &&
+      (method === "GetAuthStatus" || method === "GetStatus")
+    ) {
+      const optionalContext = await getOptionalRequestContext(c);
+      if (optionalContext.user) {
+        const authUser = await getAuthUserById(
+          optionalContext.db,
+          (optionalContext as ConnectRequestContext).authUserId,
+        );
+        return connectValue(
+          c,
+          {
+            state: "AUTHENTICATED",
+            user: currentUserToDto(optionalContext.user, authUser),
+          },
+          binaryTransport,
+        );
+      }
+      return connectValue(c, { state: "UNAUTHENTICATED" }, binaryTransport);
+    }
+    if (
+      (service === "memos.api.v1.WorkspaceService" ||
+        service === "memos.api.v1.InstanceService") &&
       [
+        "GetWorkspaceProfile",
         "GetInstanceProfile",
+        "GetProfile",
+        "GetWorkspaceSetting",
         "GetInstanceSetting",
         "BatchGetInstanceSettings",
       ].includes(method)
@@ -202,6 +227,22 @@ memosConnectApi.post("/:service/:method", async (c) => {
           : await getPublicInstanceContext(c),
         method,
         body,
+        binaryTransport,
+      );
+    }
+    if (
+      service === "memos.api.v1.WorkspaceSettingService" &&
+      ["GetWorkspaceSetting", "GetSetting"].includes(method)
+    ) {
+      return connectValue(
+        c,
+        {
+          setting: {
+            generalSetting: {
+              disallowUserRegistration: true,
+            },
+          },
+        },
         binaryTransport,
       );
     }
@@ -1030,7 +1071,9 @@ async function connectInstanceMethod(
 ) {
   const body = record(value);
   switch (method) {
-    case "GetInstanceProfile": {
+    case "GetInstanceProfile":
+    case "GetWorkspaceProfile":
+    case "GetProfile": {
       const bootstrap = await getAuthBootstrapStatus(context.db);
       const admin = context.authUserId
         ? currentUserToDto(
@@ -1041,16 +1084,27 @@ async function connectInstanceMethod(
       return connectValue(
         c,
         {
-          version: "0.6.0",
+          owner: "users/owner",
+          version: "0.22.5",
+          mode: "prod",
           demo: false,
           instanceUrl: c.env.FLAREMO_PUBLIC_URL ?? new URL(c.req.url).origin,
           admin,
           needsSetup: bootstrap.state !== "complete",
+          customizedProfile: {
+            name: "FlareMo",
+            logoUrl: "",
+            description: "",
+            locale: "zh-Hans",
+            appearance: "system",
+          },
         },
         transport,
       );
     }
-    case "GetInstanceSetting": {
+    case "GetInstanceSetting":
+    case "GetWorkspaceSetting":
+    case "GetSetting": {
       const name = requiredString(body.name, "name");
       if (!context.authUserId && !isPublicInstanceSettingKey(name)) {
         return connectErrorForTransport(
@@ -2036,7 +2090,11 @@ function fieldMaskPaths(value: unknown) {
 function assertConnectUserPath(value: unknown, currentUserId: string) {
   const name = requiredString(value, "user");
   const normalized = name.startsWith("users/") ? name : `users/${name}`;
-  if (normalized !== currentUserId) {
+  if (
+    normalized !== currentUserId &&
+    normalized !== "users/me" &&
+    name !== "me"
+  ) {
     throw new ConnectInputError("Only the current FlareMo user is available");
   }
 }
