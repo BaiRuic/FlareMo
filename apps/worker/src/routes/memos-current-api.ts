@@ -203,6 +203,15 @@ memosCurrentApi.get("/instance/system/info", (c) =>
   }),
 );
 
+memosCurrentApi.get("/auth/status", async (c) => {
+  try {
+    const context = await getRequestContext(c);
+    return c.json({ user: await currentUserForContext(context) });
+  } catch (error) {
+    return currentJsonError(c, error);
+  }
+});
+
 memosCurrentApi.get("/auth/me", async (c, next) => {
   if (isLegacyWireRequest(c)) return next();
   try {
