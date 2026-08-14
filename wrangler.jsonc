@@ -24,7 +24,7 @@
     {
       "binding": "DB",
       "database_name": "flaremo",
-      "database_id": "5a5094d8-efcc-4aef-909b-c8455358247d",
+      "database_id": "6ea0cf2f-505d-4646-a44c-40cb8bfcab3d",
       "migrations_dir": "./migrations"
     }
   ],
@@ -38,12 +38,12 @@
     "crons": ["17 3 * * *"]
   },
   "vars": {
-    "FLAREMO_DEPLOY_REPOSITORY": "",
+    "FLAREMO_DEPLOY_REPOSITORY": "BaiRuic/FlareMo",
     "FLAREMO_SINGLE_USER_EMAIL": "owner@flaremo.local",
     "FLAREMO_SINGLE_USER_NAME": "FlareMo Owner",
     // Canonical origin used by Better Auth for callback and cookie checks.
     // Set this to the deployed origin; keep secrets out of this file.
-    "FLAREMO_PUBLIC_URL": "https://flaremo.chendahuang.com",
+    "FLAREMO_PUBLIC_URL": "https://flaremo.brc730.workers.dev",
     // Optional comma-separated additional browser origins for trusted clients.
     "FLAREMO_TRUSTED_ORIGINS": ""
   }
